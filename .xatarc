@@ -1,0 +1,6 @@
+{
+  "databaseURL": "https://Tanishq-Mohod-s-workspace-sb5tj8.us-east-1.xata.sh/db/jsm_ScreenRecordings",
+  "codegen": {
+    "output": "src/xata.ts"
+  }
+}
