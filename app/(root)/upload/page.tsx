@@ -9,10 +9,33 @@ import { set } from 'better-auth'
 
 import { ChangeEvent } from 'react'
 import { useRouter } from 'next/navigation'
-
+import {
+  getVideoUploadUrl,
+  getThumbnailUploadUrl,
+  saveVideoDetails,
+} from "@/lib/actions/video";
 import { FormEvent } from 'react'
 import React, { useState } from 'react'
 
+
+const uploadFileToBunny = (
+  file: File,
+  uploadUrl: string,
+  accessKey: string
+): Promise<void> =>
+  fetch(uploadUrl, {
+    method: "PUT",
+    headers: {
+      "Content-Type": file.type,
+      AccessKey: accessKey,
+    },
+    body: file,
+  }).then((response) => {
+    if (!response.ok)
+      throw new Error(`Upload failed with status ${response.status}`);
+  });
+
+  
 const Page = () => {
 
 
@@ -33,6 +56,26 @@ const Page = () => {
         setError('Please fill in all fields');
         return;
       }
+
+      const {
+        videoId,
+        uploadUrl,
+        accessKey: videoUploadUrl,
+        accessKey: videoAccessKey
+
+      } = await getVideoUploadUrl();
+
+
+      if (!videoUploadUrl || !videoAccessKey)
+        throw new Error("Failed to get video upload credentials");
+
+
+      await uploadFileToBunny(video.file, videoUploadUrl, videoAccessKey);
+
+      const {
+        uploadUrl: thumbnailUploadUrl,
+        cdnUrl: thumbnailCdnUrl,
+      } = await getThumbnailUploadUrl(videoId);
       
     }
 
