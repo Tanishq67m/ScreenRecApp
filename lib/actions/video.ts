@@ -6,14 +6,10 @@ import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
 import { auth } from "@/lib/auth";
-import {apiFetch, doesTitleMatch, getEnv, getOrderByClause, withErrorHandling} from "@/lib/utils";
+import { apiFetch, doesTitleMatch, getEnv, getOrderByClause, withErrorHandling } from "@/lib/utils";
 import { BUNNY } from "@/constants";
-import aj from "../arcjet";
-import { fixedWindow, request } from "@arcjet/next";
 
-
-
-// Constants with full names
+// Constants
 const VIDEO_STREAM_BASE_URL = BUNNY.STREAM_BASE_URL;
 const THUMBNAIL_STORAGE_BASE_URL = BUNNY.STORAGE_BASE_URL;
 const THUMBNAIL_CDN_URL = BUNNY.CDN_URL;
@@ -23,23 +19,7 @@ const ACCESS_KEYS = {
   storageAccessKey: getEnv("BUNNY_STORAGE_ACCESS_KEY"),
 };
 
-const validateWithArcjet = async (fingerPrint: string) => {
-  const rateLimit = aj.withRule(
-    fixedWindow({
-      mode: "LIVE",
-      window: "1m",
-      max: 2,
-      characteristics: ["fingerprint"],
-    })
-  );
-  const req = await request();
-  const decision = await rateLimit.protect(req, { fingerprint: fingerPrint });
-  if (decision.isDenied()) {
-    throw new Error("Rate Limit Exceeded");
-  }
-};
-
-// Helper functions with descriptive names
+// Helpers
 const revalidatePaths = (paths: string[]) => {
   paths.forEach((path) => revalidatePath(path));
 };
@@ -96,7 +76,7 @@ export const getThumbnailUploadUrl = withErrorHandling(
 export const saveVideoDetails = withErrorHandling(
   async (videoDetails: VideoDetails) => {
     const userId = await getSessionUserId();
-    await validateWithArcjet(userId);
+
     await apiFetch(
       `${VIDEO_STREAM_BASE_URL}/${BUNNY_LIBRARY_ID}/videos/${videoDetails.videoId}`,
       {
@@ -116,7 +96,7 @@ export const saveVideoDetails = withErrorHandling(
       description: videoDetails.description,
       thumbnailUrl: videoDetails.thumbnailUrl,
       visibility: videoDetails.visibility as "public" | "private",
-      duration: videoDetails.duration,  
+      duration: videoDetails.duration,
       userId,
       videoUrl: `${BUNNY.EMBED_URL}/${BUNNY_LIBRARY_ID}/${videoDetails.videoId}`,
       createdAt: now,
@@ -134,51 +114,49 @@ export const getAllVideos = withErrorHandling(async (
   pageNumber: number = 1,
   pageSize: number = 8,
 ) => {
-  const session = await auth.api.getSession({ headers: await headers() })
+  const session = await auth.api.getSession({ headers: await headers() });
   const currentUserId = session?.user.id;
 
   const canSeeTheVideos = or(
-      eq(videos.visibility, 'public'),
-      eq(videos.userId, currentUserId!),
+    eq(videos.visibility, 'public'),
+    eq(videos.userId, currentUserId!)
   );
 
   const whereCondition = searchQuery.trim()
-      ? and(
-          canSeeTheVideos,
-          doesTitleMatch(videos, searchQuery),
+    ? and(
+        canSeeTheVideos,
+        doesTitleMatch(videos, searchQuery)
       )
-      : canSeeTheVideos
+    : canSeeTheVideos;
 
-    // Count total for pagination
-    const [{ totalCount }] = await db
-      .select({ totalCount: sql<number>`count(*)` })
-      .from(videos)
-      .where(whereCondition);
-    const totalVideos = Number(totalCount || 0);
-    const totalPages = Math.ceil(totalVideos / pageSize);
+  const [{ totalCount }] = await db
+    .select({ totalCount: sql<number>`count(*)` })
+    .from(videos)
+    .where(whereCondition);
 
-    // Fetch paginated, sorted results
-    const videoRecords = await buildVideoWithUserQuery()
-      .where(whereCondition)
-      .orderBy(
-        sortFilter
-          ? getOrderByClause(sortFilter)
-          : sql`${videos.createdAt} DESC`
-      )
-      .limit(pageSize)
-      .offset((pageNumber - 1) * pageSize);
+  const totalVideos = Number(totalCount || 0);
+  const totalPages = Math.ceil(totalVideos / pageSize);
 
-    return {
-      videos: videoRecords,
-      pagination: {
-        currentPage: pageNumber,
-        totalPages,
-        totalVideos,
-        pageSize,
-      },
-    };
-  }
-);
+  const videoRecords = await buildVideoWithUserQuery()
+    .where(whereCondition)
+    .orderBy(
+      sortFilter
+        ? getOrderByClause(sortFilter)
+        : sql`${videos.createdAt} DESC`
+    )
+    .limit(pageSize)
+    .offset((pageNumber - 1) * pageSize);
+
+  return {
+    videos: videoRecords,
+    pagination: {
+      currentPage: pageNumber,
+      totalPages,
+      totalVideos,
+      pageSize,
+    },
+  };
+});
 
 export const getVideoById = withErrorHandling(async (videoId: string) => {
   const [videoRecord] = await buildVideoWithUserQuery().where(
@@ -209,7 +187,7 @@ export const incrementVideoViews = withErrorHandling(
 export const getAllVideosByUser = withErrorHandling(
   async (
     userIdParameter: string,
-    searchQuery: string = "",
+    searchQuery: string = '',
     sortFilter?: string
   ) => {
     const currentUserId = (
@@ -228,7 +206,6 @@ export const getAllVideosByUser = withErrorHandling(
       .where(eq(user.id, userIdParameter));
     if (!userInfo) throw new Error("User not found");
 
-        /* eslint-disable @typescript-eslint/no-explicit-any */
     const conditions = [
       eq(videos.userId, userIdParameter),
       !isOwner && eq(videos.visibility, "public"),
@@ -247,7 +224,6 @@ export const getAllVideosByUser = withErrorHandling(
 
 export const updateVideoVisibility = withErrorHandling(
   async (videoId: string, visibility: Visibility) => {
-    await validateWithArcjet(videoId);
     await db
       .update(videos)
       .set({ visibility: visibility as "public" | "private", updatedAt: new Date() })

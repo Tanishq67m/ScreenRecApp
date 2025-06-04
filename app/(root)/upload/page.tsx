@@ -115,6 +115,7 @@ const UploadPage = () => {
       if (!videoUploadUrl || !videoAccessKey)
         throw new Error("Failed to get video upload credentials");
 
+      console.log("Uploading to:", videoUploadUrl, "with key:", videoAccessKey, "file:", video.file);
       await uploadFileToBunny(video.file, videoUploadUrl, videoAccessKey);
 
       const {
@@ -126,6 +127,7 @@ const UploadPage = () => {
       if (!thumbnailUploadUrl || !thumbnailCdnUrl || !thumbnailAccessKey)
         throw new Error("Failed to get thumbnail upload credentials");
 
+      console.log("Uploading to:", thumbnailUploadUrl, "with key:", thumbnailAccessKey, "file:", thumbnail.file);
       await uploadFileToBunny(
         thumbnail.file,
         thumbnailUploadUrl,
