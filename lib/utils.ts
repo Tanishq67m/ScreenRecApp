@@ -1,7 +1,7 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { ilike, sql } from "drizzle-orm";
-// import { videos } from "@/drizzle/schema";
+import { videos } from "@/drizzle/schema";
 import { DEFAULT_VIDEO_CONFIG, DEFAULT_RECORDING_CONFIG } from "@/constants";
 
 export function cn(...inputs: ClassValue[]) {
@@ -99,19 +99,19 @@ export const withErrorHandling = <T, A extends unknown[]>(
   };
 };
 
-// export const getOrderByClause = (filter?: string) => {
-//   switch (filter) {
-//     case "Most Viewed":
-//       return sql`${videos.views} DESC`;
-//     case "Least Viewed":
-//       return sql`${videos.views} ASC`;
-//     case "Oldest First":
-//       return sql`${videos.createdAt} ASC`;
-//     case "Most Recent":
-//     default:
-//       return sql`${videos.createdAt} DESC`;
-//   }
-// };
+export const getOrderByClause = (filter?: string) => {
+  switch (filter) {
+    case "Most Viewed":
+      return sql`${videos.views} DESC`;
+    case "Least Viewed":
+      return sql`${videos.views} ASC`;
+    case "Oldest First":
+      return sql`${videos.createdAt} ASC`;
+    case "Most Recent":
+    default:
+      return sql`${videos.createdAt} DESC`;
+  }
+};
 
 export const generatePagination = (currentPage: number, totalPages: number) => {
   if (totalPages <= 7) {
@@ -216,7 +216,12 @@ export const setupRecording = (
   stream: MediaStream,
   handlers: RecordingHandlers
 ): MediaRecorder => {
-  const recorder = new MediaRecorder(stream, DEFAULT_RECORDING_CONFIG);
+  let options = DEFAULT_RECORDING_CONFIG;
+  if (options && options.mimeType && !MediaRecorder.isTypeSupported(options.mimeType)) {
+    // Fallback to default if not supported
+    options = undefined;
+  }
+  const recorder = new MediaRecorder(stream, options);
   recorder.ondataavailable = handlers.onDataAvailable;
   recorder.onstop = handlers.onStop;
   return recorder;

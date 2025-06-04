@@ -1,36 +1,49 @@
-import Image from 'next/image'
-import Link from 'next/link'
-import Header from '@/components/Header'
-import { dummyCards } from '@/constants'
-import VideoCard from '@/components/VideoCard'
+import { redirect } from "next/navigation";
 
+import { getAllVideosByUser } from "@/lib/actions/video";
+import { EmptyState, SharedHeader, VideoCard } from "@/components";
 
-const page = async ({params}: ParamsWithSearch) => {
-    const { id } = await params;
+const ProfilePage = async ({ params, searchParams }: ParamsWithSearch) => {
+  const { id } = await params;
+  const { query, filter } = await searchParams;
+
+  const { user, videos } = await getAllVideosByUser(id, query, filter);
+  if (!user) redirect("/404");
+
   return (
-    <div className="wrapper page">
+    <main className="wrapper page">
+      <SharedHeader
+        subHeader={user?.email}
+        title={user?.name}
+        userImg={user?.image ?? ""}
+      />
 
-        <Header subHeader = "tanishq@gmail.com" title ="Tanishq" userImg="/assets/images/dummy.jpg"/>
-
-        <section className='video-grid'>
-        {dummyCards.map((card) => (
-        <VideoCard
-          key={card.id}
-          id={card.id}
-          title={card.title}
-          thumbnail={card.thumbnail}
-          createdAt={card.createdAt}
-          userImg={card.userImg}
-          username={card.username}
-          views={card.views}
-          visibility={card.visibility}
-          duration={card.duration}
-        />
-      ))}
-      
+      {videos?.length > 0 ? (
+        <section className="video-grid">
+          {videos.map(({ video }) => (
+            <VideoCard
+              key={video.id}
+              id={video.videoId}
+              title={video.title}
+              thumbnail={video.thumbnailUrl}
+              createdAt={video.createdAt}
+              userImg={user.image ?? ""}
+              username={user.name ?? "Guest"}
+              views={video.views}
+              visibility={video.visibility}
+              duration={video.duration}
+            />
+          ))}
         </section>
-    </div>
-  )
-}
+      ) : (
+        <EmptyState
+          icon="/assets/icons/video.svg"
+          title="No Videos Available Yet"
+          description="Video will show up here once you upload them."
+        />
+      )}
+    </main>
+  );
+};
 
-export default page
+export default ProfilePage;
