@@ -20,7 +20,7 @@ const Navbar = () => {
             width={32}
             height={32}
           />
-          <h1>SnapCast</h1>
+          <h1>ScreenRec</h1>
         </Link>
 
         {user && (
